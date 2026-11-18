@@ -8,6 +8,9 @@ Item prototypes use the "current" and "max" values provided by SNMP to calculate
 
 Alert prototypes provide an info-level alert when the "low" threshold is crossed, and a warning-level alert when the "critical" threshold is crossed. These are 5% and 0% by default, and are adjustable with provided macros.
 
+## Covers (Printer-MIB prtCoverTable)
+Discovers covers/interlocks by name and polls their status every minute. Trigger **Cover [name] is open** (Warning) when a cover or its interlock is open.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
