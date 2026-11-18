@@ -125,6 +125,71 @@ zabbix_export:
                   tags:
                     - tag: color
                       value: '{#SUPPLY.COLOR}'
+        - uuid: b2d24574b3cf4e55882704dd8a56681c
+          name: 'Input tray discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#TRAY.NAME},.1.3.6.1.2.1.43.8.2.1.13,{#TRAY.MAX},.1.3.6.1.2.1.43.8.2.1.9]'
+          key: printer.tray.discovery
+          delay: 1h
+          description: 'Discovers paper input trays (Printer-MIB prtInputTable). By default only trays with a capacity of 2 sheets or more (skips manual / single-sheet feeds); see {$PRINTER.TRAY.MAX.MATCHES} and {$PRINTER.TRAY.NOT_MATCHES}.'
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#TRAY.MAX}'
+                value: '{$PRINTER.TRAY.MAX.MATCHES}'
+              - macro: '{#TRAY.NAME}'
+                value: '{$PRINTER.TRAY.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+          item_prototypes:
+            - uuid: 67d910ceeb1a41dbbc2e014c55045e65
+              name: 'Tray [{#TRAY.NAME}]: Paper level'
+              type: SNMP_AGENT
+              snmp_oid: 'get[.1.3.6.1.2.1.43.8.2.1.10.{#SNMPINDEX}]'
+              key: 'printer.tray.level[{#SNMPINDEX}]'
+              delay: 5m
+              description: 'prtInputCurrentLevel in sheets (capacity {#TRAY.MAX}); -3 = some paper (level not measured), -2 = unknown, 0 = empty.'
+              valuemap:
+                name: prtInputLevel
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              tags:
+                - tag: component
+                  value: tray
+              trigger_prototypes:
+                - uuid: 86486388065d48bba59f759685ac2028
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.tray.level[{#SNMPINDEX}])=0'
+                  name: 'Tray [{#TRAY.NAME}] is empty'
+                  priority: WARNING
+                  description: 'The tray reports no paper (prtInputCurrentLevel = 0).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 6c9b7b0760ba4e6ba42739f0696aaf47
+              name: 'Tray [{#TRAY.NAME}]: Status'
+              type: SNMP_AGENT
+              snmp_oid: 'get[.1.3.6.1.2.1.43.8.2.1.11.{#SNMPINDEX}]'
+              key: 'printer.tray.status[{#SNMPINDEX}]'
+              delay: 5m
+              description: 'prtInputStatus (PrtSubUnitStatusTC bit field): availability 0-6 in bits 0-2, 8 = non-critical alert, 16 = critical alert, 32 = off-line, 64 = transitioning.'
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              tags:
+                - tag: component
+                  value: tray
+              trigger_prototypes:
+                - uuid: d12090455a194c9ea4c6ec7a74742c98
+                  expression: 'bitand(last(/Universal Printer Supply Levels by SNMP/printer.tray.status[{#SNMPINDEX}]),16)=16'
+                  name: 'Tray [{#TRAY.NAME}] reports a critical alert'
+                  opdata: 'Status: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: 'The tray status has the critical-alert bit (16) set, e.g. tray missing or jammed at the tray.'
+                  tags:
+                    - tag: scope
+                      value: availability
       tags:
         - tag: class
           value: hardware
@@ -139,6 +204,12 @@ zabbix_export:
         - macro: '{$ALERT.LOW.THRESHOLD}'
           value: '5'
           description: 'Provides an "Info" level alert at this percentage remaining.'
+        - macro: '{$PRINTER.TRAY.MAX.MATCHES}'
+          value: '^([2-9]|[1-9][0-9]+)$'
+          description: 'Input tray discovery: capacity (sheets) a tray must match to be discovered. Default skips manual / single-sheet feeds (capacity 1) and unknown capacities.'
+        - macro: '{$PRINTER.TRAY.NOT_MATCHES}'
+          value: CHANGE_IF_NEEDED
+          description: 'Input tray discovery: tray names to skip.'
         - macro: '{$SNMPINDEX.MATCHES}'
           value: '^.*$'
           description: 'Used in Supply discovery. Can be overridden on the host or linked template level.'
@@ -153,3 +224,14 @@ zabbix_export:
               newvalue: Up
             - value: '0'
               newvalue: Down
+        - uuid: da689299837846bbb2b4429e23fc9696
+          name: prtInputLevel
+          mappings:
+            - value: '-3'
+              newvalue: 'some paper'
+            - value: '-2'
+              newvalue: unknown
+            - value: '-1'
+              newvalue: other
+            - value: '0'
+              newvalue: empty
