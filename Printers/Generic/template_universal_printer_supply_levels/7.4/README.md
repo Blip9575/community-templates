@@ -8,6 +8,9 @@ Item prototypes use the "current" and "max" values provided by SNMP to calculate
 
 Alert prototypes provide an info-level alert when the "low" threshold is crossed, and a warning-level alert when the "critical" threshold is crossed. These are 5% and 0% by default, and are adjustable with provided macros.
 
+## Page count and print engine (Printer-MIB prtMarkerTable)
+Per marker (print engine, usually one): **Lifetime count** (prtMarkerLifeCount, 15m), **Pages per day** (dependent, change per second x 86400) and **Status** (5m). Trigger **print engine reports a critical alert** (status bit 16, Average).
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
