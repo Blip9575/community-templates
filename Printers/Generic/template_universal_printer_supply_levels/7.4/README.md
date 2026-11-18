@@ -10,6 +10,19 @@ Item prototypes use the "current" and "max" values provided by SNMP to calculate
 
 Alert prototypes provide an info-level alert when the "low" threshold is crossed, and a warning-level alert when the "critical" threshold is crossed. These are 5% and 0% by default, and are adjustable with provided macros.
 
+## Printer status (HOST-RESOURCES-MIB)
+A second discovery rule finds the printer device(s) (hrPrinterTable, usually index 1) and adds:
+- device status (hrDeviceStatus) and printer status (hrPrinterStatus: idle / printing / warmup);
+- the detected error state (hrPrinterDetectedErrorState), decoded into one item per condition and an "Active error conditions" text item.
+
+| Trigger | Severity |
+|---|---|
+| Paper jam, Printer offline, Service requested, Printer is down | Average |
+| Out of paper, Door open, Input tray empty, Input/Output tray missing, Supply missing, Output tray full | Warning |
+| Low paper, Output tray nearly full, Preventive maintenance overdue | Info |
+
+Low/no toner are collected but have no trigger (the supply levels cover them). Interval: `{$PRINTER.STATUS.INTERVAL}` (1m).
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
