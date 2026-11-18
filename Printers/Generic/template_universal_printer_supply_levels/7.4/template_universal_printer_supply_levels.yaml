@@ -125,6 +125,522 @@ zabbix_export:
                   tags:
                     - tag: color
                       value: '{#SUPPLY.COLOR}'
+        - uuid: 6144d4966202478f902e25db37c46104
+          name: 'Printer status discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#PRINTER.STATUS},.1.3.6.1.2.1.25.3.5.1.1]'
+          key: printer.status.discovery
+          delay: 1h
+          description: 'Discovers printer devices (HOST-RESOURCES-MIB hrPrinterTable). Most printers have one, index 1.'
+          item_prototypes:
+            - uuid: 516163eebab6476cacb4b29c750d5ebb
+              name: 'Printer [{#SNMPINDEX}]: Device status'
+              type: SNMP_AGENT
+              snmp_oid: 'get[.1.3.6.1.2.1.25.3.2.1.5.{#SNMPINDEX}]'
+              key: 'printer.device.status[{#SNMPINDEX}]'
+              delay: '{$PRINTER.STATUS.INTERVAL}'
+              description: 'hrDeviceStatus: unknown(1), running(2), warning(3), testing(4), down(5).'
+              valuemap:
+                name: hrDeviceStatus
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: b3ed0a52c43d490cb6cbccbd98669ef1
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.device.status[{#SNMPINDEX}])=5'
+                  name: 'Printer [{#SNMPINDEX}] is down'
+                  priority: AVERAGE
+                  description: 'The printer reports its device status as down (hrDeviceStatus = 5).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: ea6ee362b87d4d6e824b601da78251be
+              name: 'Printer [{#SNMPINDEX}]: Status'
+              type: SNMP_AGENT
+              snmp_oid: 'get[.1.3.6.1.2.1.25.3.5.1.1.{#SNMPINDEX}]'
+              key: 'printer.status[{#SNMPINDEX}]'
+              delay: '{$PRINTER.STATUS.INTERVAL}'
+              description: 'hrPrinterStatus: other(1), unknown(2), idle(3), printing(4), warmup(5).'
+              valuemap:
+                name: hrPrinterStatus
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              tags:
+                - tag: component
+                  value: printer
+            - uuid: 1fe086a65e04455bacbc477b0c6918b0
+              name: 'Printer [{#SNMPINDEX}]: Detected error state (raw)'
+              type: SNMP_AGENT
+              snmp_oid: 'get[.1.3.6.1.2.1.25.3.5.1.2.{#SNMPINDEX}]'
+              key: 'printer.error.state[{#SNMPINDEX}]'
+              delay: '{$PRINTER.STATUS.INTERVAL}'
+              history: '0'
+              value_type: TEXT
+              description: 'hrPrinterDetectedErrorState: a bit string of error conditions, decoded to JSON for the dependent items.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var s = String(value).trim();
+                      var bytes = [];
+                      if (/^[0-9A-Fa-f]{2}(\s+[0-9A-Fa-f]{2})*$/.test(s)) {
+                          s.split(/\s+/).forEach(function (h) { bytes.push(parseInt(h, 16)); });
+                      }
+                      else {
+                          for (var i = 0; i < s.length; i++) {
+                              bytes.push(s.charCodeAt(i) & 0xFF);
+                          }
+                      }
+                      var names = [
+                          ['lowPaper', 'noPaper', 'lowToner', 'noToner', 'doorOpen', 'jammed', 'offline', 'serviceRequested'],
+                          ['inputTrayMissing', 'outputTrayMissing', 'markerSupplyMissing', 'outputNearFull', 'outputFull', 'inputTrayEmpty', 'overduePreventMaint']
+                      ];
+                      var flags = {}, active = [];
+                      for (var b = 0; b < names.length; b++) {
+                          for (var j = 0; j < names[b].length; j++) {
+                              var on = ((bytes[b] || 0) >> (7 - j)) & 1;
+                              flags[names[b][j]] = on;
+                              if (on) {
+                                  active.push(names[b][j]);
+                              }
+                          }
+                      }
+                      return JSON.stringify({flags: flags, active: active.length ? active.join(', ') : 'none'});
+              tags:
+                - tag: component
+                  value: raw
+            - uuid: a381ebda75374a08b25beb6ffc7f1537
+              name: 'Printer [{#SNMPINDEX}]: Active error conditions'
+              type: DEPENDENT
+              key: 'printer.error.active[{#SNMPINDEX}]'
+              value_type: TEXT
+              description: 'Active hrPrinterDetectedErrorState conditions, comma-separated, or "none".'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.active
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+            - uuid: f9d302c241f44a6dbaa3728485de7881
+              name: 'Printer [{#SNMPINDEX}]: Condition lowPaper'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},lowPaper]'
+              description: 'hrPrinterDetectedErrorState bit lowPaper: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.lowPaper
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 2a74f76c65af4b83aaed23fdcfadfbc9
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},lowPaper])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Low paper'
+                  priority: INFO
+                  description: 'The printer reports the condition lowPaper (hrPrinterDetectedErrorState).'
+                  dependencies:
+                    - name: 'Printer [{#SNMPINDEX}]: Out of paper'
+                      expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},noPaper])=1'
+                  tags:
+                    - tag: scope
+                      value: notice
+            - uuid: 033976967fc44823a1c602e295cb0ba6
+              name: 'Printer [{#SNMPINDEX}]: Condition noPaper'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},noPaper]'
+              description: 'hrPrinterDetectedErrorState bit noPaper: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.noPaper
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 845c049281054d708fd84f77679b5a9e
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},noPaper])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Out of paper'
+                  priority: WARNING
+                  description: 'The printer reports the condition noPaper (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: a1c5faf6cf9f4d3eb794fc079ece890f
+              name: 'Printer [{#SNMPINDEX}]: Condition lowToner'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},lowToner]'
+              description: 'hrPrinterDetectedErrorState bit lowToner: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.lowToner
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+            - uuid: 92fa03040c7a4daa813572a3eb0ede0f
+              name: 'Printer [{#SNMPINDEX}]: Condition noToner'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},noToner]'
+              description: 'hrPrinterDetectedErrorState bit noToner: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.noToner
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+            - uuid: 6f1b10547af442d1a9085c4ae2d3de2f
+              name: 'Printer [{#SNMPINDEX}]: Condition doorOpen'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},doorOpen]'
+              description: 'hrPrinterDetectedErrorState bit doorOpen: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.doorOpen
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: a6579a380d054c448e193e97e70ba36e
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},doorOpen])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Door open'
+                  priority: WARNING
+                  description: 'The printer reports the condition doorOpen (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 7fa1545fb75a46b99baa2e3f760011a0
+              name: 'Printer [{#SNMPINDEX}]: Condition jammed'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},jammed]'
+              description: 'hrPrinterDetectedErrorState bit jammed: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.jammed
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: baa116da3dce41bab05766eed1f29d2e
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},jammed])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Paper jam'
+                  priority: AVERAGE
+                  description: 'The printer reports the condition jammed (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 3976961ec46b4ed6bf5920bba72f9319
+              name: 'Printer [{#SNMPINDEX}]: Condition offline'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},offline]'
+              description: 'hrPrinterDetectedErrorState bit offline: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.offline
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 999161c583474b22aac87cb188ee11a3
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},offline])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Printer offline'
+                  priority: AVERAGE
+                  description: 'The printer reports the condition offline (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 4e4dbfa19c074d9f8c526cc1fd466092
+              name: 'Printer [{#SNMPINDEX}]: Condition serviceRequested'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},serviceRequested]'
+              description: 'hrPrinterDetectedErrorState bit serviceRequested: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.serviceRequested
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: c2d581f401e24abfa2dd2d6b98cac59c
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},serviceRequested])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Service requested'
+                  priority: AVERAGE
+                  description: 'The printer reports the condition serviceRequested (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 9833338e8a104015920cc243b320eaaf
+              name: 'Printer [{#SNMPINDEX}]: Condition inputTrayMissing'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},inputTrayMissing]'
+              description: 'hrPrinterDetectedErrorState bit inputTrayMissing: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.inputTrayMissing
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: a23edee73979415d81700409e14bce98
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},inputTrayMissing])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Input tray missing'
+                  priority: WARNING
+                  description: 'The printer reports the condition inputTrayMissing (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: c99e8a57289c4eb3908c8c11d49caff9
+              name: 'Printer [{#SNMPINDEX}]: Condition outputTrayMissing'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},outputTrayMissing]'
+              description: 'hrPrinterDetectedErrorState bit outputTrayMissing: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.outputTrayMissing
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 4ae0c9f549d04bc98cd532d509dade3d
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},outputTrayMissing])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Output tray missing'
+                  priority: WARNING
+                  description: 'The printer reports the condition outputTrayMissing (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 2361c4f062d84f258728663ba9952ddb
+              name: 'Printer [{#SNMPINDEX}]: Condition markerSupplyMissing'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},markerSupplyMissing]'
+              description: 'hrPrinterDetectedErrorState bit markerSupplyMissing: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.markerSupplyMissing
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 1fbcc04fc3ec4f85b36b9a628fc1eb05
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},markerSupplyMissing])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Supply missing'
+                  priority: WARNING
+                  description: 'The printer reports the condition markerSupplyMissing (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 9c155e1ce99346c181196df09388f88d
+              name: 'Printer [{#SNMPINDEX}]: Condition outputNearFull'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},outputNearFull]'
+              description: 'hrPrinterDetectedErrorState bit outputNearFull: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.outputNearFull
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: e5e519f609524508855222b7024649da
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},outputNearFull])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Output tray nearly full'
+                  priority: INFO
+                  description: 'The printer reports the condition outputNearFull (hrPrinterDetectedErrorState).'
+                  dependencies:
+                    - name: 'Printer [{#SNMPINDEX}]: Output tray full'
+                      expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},outputFull])=1'
+                  tags:
+                    - tag: scope
+                      value: notice
+            - uuid: 65ffb7c7c32742a7a71e4eeafb0de7f1
+              name: 'Printer [{#SNMPINDEX}]: Condition outputFull'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},outputFull]'
+              description: 'hrPrinterDetectedErrorState bit outputFull: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.outputFull
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 6d623a5bf4c147af88748e8b0983a511
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},outputFull])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Output tray full'
+                  priority: WARNING
+                  description: 'The printer reports the condition outputFull (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: b5acc5888cb24d51901b2bb36c259f32
+              name: 'Printer [{#SNMPINDEX}]: Condition inputTrayEmpty'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},inputTrayEmpty]'
+              description: 'hrPrinterDetectedErrorState bit inputTrayEmpty: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.inputTrayEmpty
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 4dacea6611ac4e408c1a3acabe909cbf
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},inputTrayEmpty])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Input tray empty'
+                  priority: WARNING
+                  description: 'The printer reports the condition inputTrayEmpty (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: a4ff8ab4879844c99edd541cf1c1ddc4
+              name: 'Printer [{#SNMPINDEX}]: Condition overduePreventMaint'
+              type: DEPENDENT
+              key: 'printer.error[{#SNMPINDEX},overduePreventMaint]'
+              description: 'hrPrinterDetectedErrorState bit overduePreventMaint: 1 = set.'
+              valuemap:
+                name: 'Printer error flag'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.flags.overduePreventMaint
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'printer.error.state[{#SNMPINDEX}]'
+              tags:
+                - tag: component
+                  value: printer
+              trigger_prototypes:
+                - uuid: 568da3ca8b0e4f0f865ddc016d10e452
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.error[{#SNMPINDEX},overduePreventMaint])=1'
+                  name: 'Printer [{#SNMPINDEX}]: Preventive maintenance overdue'
+                  priority: INFO
+                  description: 'The printer reports the condition overduePreventMaint (hrPrinterDetectedErrorState).'
+                  tags:
+                    - tag: scope
+                      value: notice
       tags:
         - tag: class
           value: hardware
@@ -139,6 +655,9 @@ zabbix_export:
         - macro: '{$ALERT.LOW.THRESHOLD}'
           value: '5'
           description: 'Provides an "Info" level alert at this percentage remaining.'
+        - macro: '{$PRINTER.STATUS.INTERVAL}'
+          value: 1m
+          description: 'Update interval of the printer status and error state items.'
         - macro: '{$SNMPINDEX.MATCHES}'
           value: '^.*$'
           description: 'Used in Supply discovery. Can be overridden on the host or linked template level.'
@@ -153,3 +672,36 @@ zabbix_export:
               newvalue: Up
             - value: '0'
               newvalue: Down
+        - uuid: 0bc89c344e1c48a5bbe0e8b6f9ff7e80
+          name: hrDeviceStatus
+          mappings:
+            - value: '1'
+              newvalue: unknown
+            - value: '2'
+              newvalue: running
+            - value: '3'
+              newvalue: warning
+            - value: '4'
+              newvalue: testing
+            - value: '5'
+              newvalue: down
+        - uuid: 65d5f419a80b4225ab37b91a3def2c9e
+          name: hrPrinterStatus
+          mappings:
+            - value: '1'
+              newvalue: other
+            - value: '2'
+              newvalue: unknown
+            - value: '3'
+              newvalue: idle
+            - value: '4'
+              newvalue: printing
+            - value: '5'
+              newvalue: warmup
+        - uuid: 7730e127750b4c5d8110f9f4a44d1f62
+          name: 'Printer error flag'
+          mappings:
+            - value: '0'
+              newvalue: 'No'
+            - value: '1'
+              newvalue: 'Yes'
