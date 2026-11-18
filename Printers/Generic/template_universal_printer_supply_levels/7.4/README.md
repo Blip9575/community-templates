@@ -8,6 +8,9 @@ Item prototypes use the "current" and "max" values provided by SNMP to calculate
 
 Alert prototypes provide an info-level alert when the "low" threshold is crossed, and a warning-level alert when the "critical" threshold is crossed. These are 5% and 0% by default, and are adjustable with provided macros.
 
+## Printer alert table (Printer-MIB prtAlertTable)
+One SNMP walk (`{$PRINTER.ALERTS.INTERVAL}`, 1m; Zabbix 6.4+) of the alerts the printer itself reports: **Printer alerts: active** (text), **critical** and **warning** counts. Triggers **Printer reports a critical alert** (Average) and **Printer reports a warning** (Info), with the printer's text as operational data.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
