@@ -1,5 +1,7 @@
 # Universal Printer Supply Levels by SNMP
-This template simply tracks your toner/ink levels via SNMP, and a simple ping to your device, with "low" and "critical" alerts. That's the whole scope of the template.
+This template simply tracks your toner/ink levels via SNMP, with "low" and "critical" alerts. That's the whole scope of the template.
+
+Availability (ping) is not part of this template: link it together with Zabbix's "ICMP Ping" or "Network Generic Device by SNMP" template, which already provide the `icmpping` item and its triggers (a second `icmpping` item on the same host would stop the templates from being linked together).
 
 As long as your MFP follows the Printer MIB standard (should be true for any mainstream printer), this template will discover all installed "Supplies" in your MFP via SNMP. "Marker Supplies" is the term used in the Printer MIB for toner, ink, and other consumable substances that make a mark on whatever you're printing on.
 

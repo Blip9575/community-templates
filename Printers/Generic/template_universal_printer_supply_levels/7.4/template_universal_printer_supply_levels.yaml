@@ -25,26 +25,6 @@ zabbix_export:
         Author: Mick Swanson
       groups:
         - name: Templates/Printers
-      items:
-        - uuid: a0d0f0d65c3143fa9b29cd51047c4bf8
-          name: 'ICMP Ping'
-          type: SIMPLE
-          key: icmpping
-          valuemap:
-            name: 'Service State'
-          tags:
-            - tag: component
-              value: health
-            - tag: component
-              value: network
-          triggers:
-            - uuid: d33434ab97a84b5d90f9e23e376d27a3
-              expression: 'max(/Universal Printer Supply Levels by SNMP/icmpping,#3)=0'
-              name: 'Unavailable by ICMP ping'
-              priority: HIGH
-              tags:
-                - tag: scope
-                  value: availability
       discovery_rules:
         - uuid: befe941c7ada410ba027558a04b5f5d3
           name: 'Supply Discovery'
@@ -145,11 +125,3 @@ zabbix_export:
         - macro: '{$SNMPINDEX.NOT_MATCHES}'
           value: '^(?:CHANGE|ME)$'
           description: 'Used in Supply discovery. Can be overridden on the host or linked template level. Find the SNMP Index by checking the key name of your item. Has to use this format: ^(?:1|2|3)$ where indices 1,2, and 3 will be ignored.'
-      valuemaps:
-        - uuid: a631c9e9fc9c4a60a989d4ff37cbd316
-          name: 'Service State'
-          mappings:
-            - value: '1'
-              newvalue: Up
-            - value: '0'
-              newvalue: Down
