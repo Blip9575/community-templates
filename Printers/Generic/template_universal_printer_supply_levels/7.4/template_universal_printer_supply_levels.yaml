@@ -787,6 +787,44 @@ zabbix_export:
                   tags:
                     - tag: scope
                       value: availability
+        - uuid: 33c93c7bc9d74a5ab333182191a761e8
+          name: 'Printer alert discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#ALERT.TEXT},.1.3.6.1.2.1.43.18.1.1.8,{#ALERT.SEVERITY},.1.3.6.1.2.1.43.18.1.1.2]'
+          key: printer.alert.discovery
+          delay: '{$PRINTER.ALERTS.INTERVAL}'
+          lifetime_type: DELETE_IMMEDIATELY
+          description: 'Discovers the alerts the printer currently reports (Printer-MIB prtAlertTable). Each active alert gets an item and a trigger; when the printer drops the alert, discovery deletes them and the problem resolves. Uses discovery (GETBULK) rather than walk[]: some printers answer the GET that walk[] starts with by noSuchName when the table is empty.'
+          item_prototypes:
+            - uuid: 4964eb8739df4235b9ead25f71fb1f68
+              name: 'Printer alert [{#SNMPINDEX}]: {#ALERT.TEXT}'
+              type: SNMP_AGENT
+              snmp_oid: 'get[.1.3.6.1.2.1.43.18.1.1.2.{#SNMPINDEX}]'
+              key: 'printer.alert.severity[{#SNMPINDEX}]'
+              delay: '{$PRINTER.ALERTS.INTERVAL}'
+              description: 'prtAlertSeverityLevel of the alert "{#ALERT.TEXT}": other(1), critical(3), warning(4), warningBinaryChangeEvent(5).'
+              valuemap:
+                name: prtAlertSeverityLevel
+              tags:
+                - tag: component
+                  value: alert
+              trigger_prototypes:
+                - uuid: a83233cfb90c44cb9c8fd05d208186bb
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.alert.severity[{#SNMPINDEX}])=3'
+                  name: 'Printer alert: {#ALERT.TEXT}'
+                  priority: AVERAGE
+                  description: 'The printer reports a critical alert in its alert table (prtAlertSeverityLevel = critical).'
+                  tags:
+                    - tag: scope
+                      value: availability
+                - uuid: 9b78eb49e7fa44ebb83d5e435be30e4f
+                  expression: 'last(/Universal Printer Supply Levels by SNMP/printer.alert.severity[{#SNMPINDEX}])<>3'
+                  name: 'Printer warning: {#ALERT.TEXT}'
+                  priority: INFO
+                  description: 'The printer reports a non-critical alert (often low supplies, covered by the supply triggers).'
+                  tags:
+                    - tag: scope
+                      value: notice
       tags:
         - tag: class
           value: hardware
@@ -813,6 +851,9 @@ zabbix_export:
         - macro: '{$PRINTER.COUNT.UNITS}'
           value: pages
           description: 'Units shown for the lifetime count and print rate.'
+        - macro: '{$PRINTER.ALERTS.INTERVAL}'
+          value: 1m
+          description: 'Update interval of the printer alert discovery and items.'
         - macro: '{$SNMPINDEX.MATCHES}'
           value: '^.*$'
           description: 'Used in Supply discovery. Can be overridden on the host or linked template level.'
@@ -879,3 +920,14 @@ zabbix_export:
               newvalue: other
             - value: '0'
               newvalue: empty
+        - uuid: f2e0e9709f804d43b3ee5add1d72c0ca
+          name: prtAlertSeverityLevel
+          mappings:
+            - value: '1'
+              newvalue: other
+            - value: '3'
+              newvalue: critical
+            - value: '4'
+              newvalue: warning
+            - value: '5'
+              newvalue: warningBinaryChangeEvent
