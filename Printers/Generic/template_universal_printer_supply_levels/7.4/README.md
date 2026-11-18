@@ -8,6 +8,9 @@ Item prototypes use the "current" and "max" values provided by SNMP to calculate
 
 Alert prototypes provide an info-level alert when the "low" threshold is crossed, and a warning-level alert when the "critical" threshold is crossed. These are 5% and 0% by default, and are adjustable with provided macros.
 
+## Input trays (Printer-MIB prtInputTable)
+Discovers paper trays with a capacity of 2 sheets or more (`{$PRINTER.TRAY.MAX.MATCHES}`; skips manual / single-sheet feeds; names to skip: `{$PRINTER.TRAY.NOT_MATCHES}`). Per tray: paper level and status (5m). Triggers: **Tray [name] is empty** (level 0) and **Tray [name] reports a critical alert** (status bit 16), both Warning. Many printers report only "some paper" (-3) rather than a sheet count.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
