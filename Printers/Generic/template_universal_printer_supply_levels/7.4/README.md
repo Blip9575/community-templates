@@ -23,6 +23,9 @@ A second discovery rule finds the printer device(s) (hrPrinterTable, usually ind
 
 Low/no toner are collected but have no trigger (the supply levels cover them). Interval: `{$PRINTER.STATUS.INTERVAL}` (1m).
 
+## Covers (Printer-MIB prtCoverTable)
+Discovers covers/interlocks by name and polls their status every minute. Trigger **Cover [name] is open** (Warning) when a cover or its interlock is open.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
