@@ -8,6 +8,9 @@ Item prototypes use the "current" and "max" values provided by SNMP to calculate
 
 Alert prototypes provide an info-level alert when the "low" threshold is crossed, and a warning-level alert when the "critical" threshold is crossed. These are 5% and 0% by default, and are adjustable with provided macros.
 
+## HP front panel message
+On HP printers (gdStatusDisplay answers) a discovery rule adds **HP front panel message** (5m): the status line shown on the printer, e.g. "Sleep mode is on.". Other vendors: nothing is created. No trigger.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
