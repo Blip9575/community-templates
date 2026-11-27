@@ -45,6 +45,33 @@ zabbix_export:
               tags:
                 - tag: scope
                   value: availability
+        - uuid: b8cfa2749ade41878ab024df55781c86
+          name: 'Printer host name'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.5.0]'
+          key: printer.hostname
+          delay: 15m
+          value_type: CHAR
+          trends: '0'
+          description: 'sysName (SNMPv2-MIB). Many printers take it from DHCP option 12, so renaming a DHCP reservation renames the printer. Mobile print services (e.g. HP Print Service Plugin) may stop listing a printer whose name changed.'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 09116fbd2aa64df0a8b258f0f9df292b
+              expression: 'last(/Universal Printer Supply Levels by SNMP/printer.hostname,#1)<>last(/Universal Printer Supply Levels by SNMP/printer.hostname,#2) and length(last(/Universal Printer Supply Levels by SNMP/printer.hostname))>0'
+              name: 'Printer host name has changed'
+              event_name: 'Printer host name has changed: {?last(/Universal Printer Supply Levels by SNMP/printer.hostname,#2)} -> {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'The printer reports a different host name (sysName) than before. Check the DHCP reservation or the printer''s Network Identification page; mobile print apps may no longer find the printer. Close the problem manually once confirmed.'
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: notice
       discovery_rules:
         - uuid: befe941c7ada410ba027558a04b5f5d3
           name: 'Supply Discovery'
