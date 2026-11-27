@@ -8,6 +8,13 @@ Item prototypes use the "current" and "max" values provided by SNMP to calculate
 
 Alert prototypes provide an info-level alert when the "low" threshold is crossed, and a warning-level alert when the "critical" threshold is crossed. These are 5% and 0% by default, and are adjustable with provided macros.
 
+## Host name change
+
+Item `printer.hostname` (sysName, every 15m) with the trigger **Printer host name has changed** (Warning, manual close).
+Many printers adopt the host name sent by DHCP (option 12), so renaming a DHCP reservation silently renames the printer;
+mobile print services such as the HP Print Service Plugin can then stop listing it even when it was added by IP.
+The key differs from `system.name` so the template can be linked together with the stock "Network Generic Device by SNMP".
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
