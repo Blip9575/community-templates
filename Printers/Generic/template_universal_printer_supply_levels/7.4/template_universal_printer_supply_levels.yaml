@@ -65,7 +65,7 @@ zabbix_export:
             - uuid: 09116fbd2aa64df0a8b258f0f9df292b
               expression: 'last(/Universal Printer Supply Levels by SNMP/printer.hostname,#1)<>last(/Universal Printer Supply Levels by SNMP/printer.hostname,#2) and length(last(/Universal Printer Supply Levels by SNMP/printer.hostname))>0'
               name: 'Printer host name has changed'
-              event_name: 'Printer host name has changed: {?last(/Universal Printer Supply Levels by SNMP/printer.hostname,#2)} -> {ITEM.LASTVALUE1}'
+              event_name: 'Printer host name has changed: {?last(//printer.hostname,#2)} -> {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'The printer reports a different host name (sysName) than before. Check the DHCP reservation or the printer''s Network Identification page; mobile print apps may no longer find the printer. Close the problem manually once confirmed.'
               manual_close: 'YES'
