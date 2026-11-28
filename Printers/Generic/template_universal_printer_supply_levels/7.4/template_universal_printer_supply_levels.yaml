@@ -65,11 +65,11 @@ zabbix_export:
               value: system
           triggers:
             - uuid: 09116fbd2aa64df0a8b258f0f9df292b
-              expression: 'last(/Universal Printer Supply Levels by SNMP/printer.hostname,#1)<>last(/Universal Printer Supply Levels by SNMP/printer.hostname,#2) and length(last(/Universal Printer Supply Levels by SNMP/printer.hostname))>0'
+              expression: 'count(/Universal Printer Supply Levels by SNMP/printer.hostname,#2)=2 and last(/Universal Printer Supply Levels by SNMP/printer.hostname,#1)<>last(/Universal Printer Supply Levels by SNMP/printer.hostname,#2) and length(last(/Universal Printer Supply Levels by SNMP/printer.hostname))>0'
               name: 'Printer host name has changed'
               event_name: 'Printer host name has changed: {?last(//printer.hostname,#2)} -> {ITEM.LASTVALUE1}'
               priority: WARNING
-              description: 'The printer reports a different host name (sysName) than before. Check the DHCP reservation or the printer''s Network Identification page; mobile print apps may no longer find the printer. Close the problem manually once confirmed.'
+              description: 'The printer reports a different host name (sysName) than before. Check the DHCP reservation or the printer''s Network Identification page; mobile print apps may no longer find the printer. Close the problem manually once confirmed. The count(#2) guard keeps the trigger OK (not Unknown) while the item has only one value, e.g. right after linking: with the 12h heartbeat the second value can take 12h or longer if the printer is asleep.'
               manual_close: 'YES'
               tags:
                 - tag: scope
