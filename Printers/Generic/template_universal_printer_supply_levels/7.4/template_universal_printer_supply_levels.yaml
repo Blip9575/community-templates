@@ -54,7 +54,6 @@ zabbix_export:
           key: printer.hostname
           delay: 15m
           value_type: CHAR
-          trends: '0'
           description: 'sysName (SNMPv2-MIB). Many printers take it from DHCP option 12, so renaming a DHCP reservation renames the printer. Mobile print services (e.g. HP Print Service Plugin) may stop listing a printer whose name changed.'
           preprocessing:
             - type: DISCARD_UNCHANGED_HEARTBEAT
@@ -802,8 +801,6 @@ zabbix_export:
               description: 'Print rate from the lifetime count (change per second x 86400).'
               preprocessing:
                 - type: CHANGE_PER_SECOND
-                  parameters:
-                    - ''
                 - type: MULTIPLIER
                   parameters:
                     - '86400'
@@ -911,6 +908,12 @@ zabbix_export:
         - macro: '{$ALERT.LOW.THRESHOLD}'
           value: '5'
           description: 'Provides an "Info" level alert at this percentage remaining.'
+        - macro: '{$PRINTER.ALERTS.INTERVAL}'
+          value: 1m
+          description: 'Update interval of the printer alert discovery and items.'
+        - macro: '{$PRINTER.COUNT.UNITS}'
+          value: pages
+          description: 'Units shown for the lifetime count and print rate.'
         - macro: '{$PRINTER.STATUS.INTERVAL}'
           value: 1m
           description: 'Update interval of the printer status and error state items.'
@@ -920,12 +923,6 @@ zabbix_export:
         - macro: '{$PRINTER.TRAY.NOT_MATCHES}'
           value: CHANGE_IF_NEEDED
           description: 'Input tray discovery: tray names to skip.'
-        - macro: '{$PRINTER.COUNT.UNITS}'
-          value: pages
-          description: 'Units shown for the lifetime count and print rate.'
-        - macro: '{$PRINTER.ALERTS.INTERVAL}'
-          value: 1m
-          description: 'Update interval of the printer alert discovery and items.'
         - macro: '{$SNMPINDEX.MATCHES}'
           value: '^.*$'
           description: 'Used in Supply discovery. Can be overridden on the host or linked template level.'
