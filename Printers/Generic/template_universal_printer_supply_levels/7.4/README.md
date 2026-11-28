@@ -35,6 +35,9 @@ Per marker (print engine, usually one): **Lifetime count** (prtMarkerLifeCount, 
 ## Printer alert table (Printer-MIB prtAlertTable)
 A discovery rule (`{$PRINTER.ALERTS.INTERVAL}`, 1m) turns each alert the printer currently reports into an item with the printer's own text: trigger **Printer alert: <text>** (critical, Average) or **Printer warning: <text>** (Info). When the printer drops the alert, discovery deletes item and trigger at once and the problem resolves. Discovery (GETBULK) is used instead of `walk[]` because some printers answer `walk[]`'s initial GET with noSuchName when the table is empty.
 
+## HP front panel message
+On HP printers (gdStatusDisplay answers) a discovery rule adds **HP front panel message** (5m): the status line shown on the printer, e.g. "Sleep mode is on.". Other vendors: nothing is created. No trigger.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
