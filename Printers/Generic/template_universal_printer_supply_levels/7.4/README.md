@@ -26,6 +26,9 @@ Low/no toner are collected but have no trigger (the supply levels cover them). I
 ## Covers (Printer-MIB prtCoverTable)
 Discovers covers/interlocks by name and polls their status every minute. Trigger **Cover [name] is open** (Warning) when a cover or its interlock is open.
 
+## Input trays (Printer-MIB prtInputTable)
+Discovers paper trays with a capacity of 2 sheets or more (`{$PRINTER.TRAY.MAX.MATCHES}`; skips manual / single-sheet feeds; names to skip: `{$PRINTER.TRAY.NOT_MATCHES}`). Per tray: paper level and status (5m). Triggers: **Tray [name] is empty** (level 0) and **Tray [name] reports a critical alert** (status bit 16), both Warning. Many printers report only "some paper" (-3) rather than a sheet count.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
