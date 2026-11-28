@@ -26,6 +26,27 @@ zabbix_export:
       groups:
         - name: Templates/Printers
       items:
+        - uuid: a0d0f0d65c3143fa9b29cd51047c4bf8
+          name: 'Printer reachability (ICMP ping)'
+          type: SIMPLE
+          key: 'icmpping[,3]'
+          description: 'ICMP ping with 3 packets: 1 = the printer answers, 0 = no reply. Uses its own key (not plain icmpping), so the template can be linked together with the "ICMP Ping" or "Network Generic Device by SNMP" templates.'
+          valuemap:
+            name: 'Service State'
+          tags:
+            - tag: component
+              value: health
+            - tag: component
+              value: network
+          triggers:
+            - uuid: d33434ab97a84b5d90f9e23e376d27a3
+              expression: 'max(/Universal Printer Supply Levels by SNMP/icmpping[,3],#3)=0'
+              name: 'Printer is unreachable (asleep or switched off)'
+              priority: INFO
+              description: 'The printer has not answered ping for 3 checks. Printers in deep sleep / auto-off or switched off stop answering, which is usually expected, so this is informational. If an always-on printer must alert, raise the severity on a copy of the template, or use the "ICMP Ping" template instead.'
+              tags:
+                - tag: scope
+                  value: availability
         - uuid: b8cfa2749ade41878ab024df55781c86
           name: 'Printer host name'
           type: SNMP_AGENT
@@ -982,3 +1003,10 @@ zabbix_export:
               newvalue: warning
             - value: '5'
               newvalue: warningBinaryChangeEvent
+        - uuid: a631c9e9fc9c4a60a989d4ff37cbd316
+          name: 'Service State'
+          mappings:
+            - value: '1'
+              newvalue: Up
+            - value: '0'
+              newvalue: Down
