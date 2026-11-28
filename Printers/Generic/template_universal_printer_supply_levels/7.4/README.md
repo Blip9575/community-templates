@@ -32,6 +32,9 @@ Discovers paper trays with a capacity of 2 sheets or more (`{$PRINTER.TRAY.MAX.M
 ## Page count and print engine (Printer-MIB prtMarkerTable)
 Per marker (print engine, usually one): **Lifetime count** (prtMarkerLifeCount, 15m), **Pages per day** (dependent, change per second x 86400) and **Status** (5m). Trigger **print engine reports a critical alert** (status bit 16, Average).
 
+## Printer alert table (Printer-MIB prtAlertTable)
+A discovery rule (`{$PRINTER.ALERTS.INTERVAL}`, 1m) turns each alert the printer currently reports into an item with the printer's own text: trigger **Printer alert: <text>** (critical, Average) or **Printer warning: <text>** (Info). When the printer drops the alert, discovery deletes item and trigger at once and the problem resolves. Discovery (GETBULK) is used instead of `walk[]` because some printers answer `walk[]`'s initial GET with noSuchName when the table is empty.
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
