@@ -29,6 +29,9 @@ Discovers covers/interlocks by name and polls their status every minute. Trigger
 ## Input trays (Printer-MIB prtInputTable)
 Discovers paper trays with a capacity of 2 sheets or more (`{$PRINTER.TRAY.MAX.MATCHES}`; skips manual / single-sheet feeds; names to skip: `{$PRINTER.TRAY.NOT_MATCHES}`). Per tray: paper level and status (5m). Triggers: **Tray [name] is empty** (level 0) and **Tray [name] reports a critical alert** (status bit 16), both Warning. Many printers report only "some paper" (-3) rather than a sheet count.
 
+## Page count and print engine (Printer-MIB prtMarkerTable)
+Per marker (print engine, usually one): **Lifetime count** (prtMarkerLifeCount, 15m), **Pages per day** (dependent, change per second x 86400) and **Status** (5m). Trigger **print engine reports a critical alert** (status bit 16, Average).
+
 ## Setup
 1. Download `template_universal_printer_supply_levels.yaml`.
 2. In Zabbix, go to `Data Collection` -> `Templates` and then `Import` the .yaml with the button in the upper-right.
